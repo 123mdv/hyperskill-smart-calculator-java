@@ -14,6 +14,9 @@ public class Main {
                 case "/exit":
                     System.out.println("Bye!");
                     break;
+                case "/help":
+                    System.out.println("The program calculates the sum of numbers");
+                    continue;
                 case "":
                     continue;
                 default:
@@ -22,8 +25,11 @@ public class Main {
                         System.out.println(input);
                         continue;
                     }
-                    System.out.println(Integer.parseInt(inputArray[0]) +
-                            Integer.parseInt(inputArray[1]));
+                    int sum = 0;
+                    for (String numberString : inputArray) {
+                        sum += Integer.parseInt(numberString);
+                    }
+                    System.out.println(sum);
             }
         }
     }
