@@ -15,22 +15,35 @@ public class Main {
                     System.out.println("Bye!");
                     break;
                 case "/help":
-                    System.out.println("The program calculates the sum of numbers");
+                    System.out.println("The program can calculate expressions with multiple additions and subtractions.\n" +
+                            "It supports unary and binary minus operators, as well as several operators following each other.");
                     continue;
                 case "":
                     continue;
                 default:
-                    String[] inputArray = input.split(" ");
-                    if (inputArray.length == 1) {
-                        System.out.println(input);
-                        continue;
-                    }
-                    int sum = 0;
-                    for (String numberString : inputArray) {
-                        sum += Integer.parseInt(numberString);
-                    }
-                    System.out.println(sum);
+                    System.out.println(multiSum(input));
             }
         }
+    }
+
+    public static int multiSum(String input) {
+        // int answer = value of first item
+        String[] inputArray = input.split("\\s+");
+        int answer = Integer.parseInt(inputArray[0]);
+        if (inputArray.length == 1) return answer;
+
+        for (int i = 1; i < inputArray.length; i += 2) {
+            answer = singleSum(answer, inputArray[i], Integer.parseInt(inputArray[i + 1]));
+        }
+
+        return answer;
+    }
+
+    public static int singleSum(int a, String operand, int b) {
+        if (operand.matches("\\++")) return a + b;
+        // if operand is not + then it must be -
+        if (operand.length() % 2 == 0) return a + b;
+        // uneven number of minuses is minus, so...
+        return a - b;
     }
 }
