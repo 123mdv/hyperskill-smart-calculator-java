@@ -30,8 +30,11 @@ public class Main {
                 System.out.println("Bye!");
                 break;
             case "/help":
-                System.out.println("The program can calculate expressions with multiple additions and subtractions.\n" +
-                        "It supports unary and binary minus operators, as well as several operators following each other.");
+                System.out.println(
+                        "The program can calculate expressions with multiple additions and subtractions.\n" +
+                        "It supports +-*/() operators, including multiple +++ and --- and unary minus operators.\n" +
+                        "You can assign values to variables and then use them in your calculations.\n" +
+                        "Type /exit to end the program.");
                 break;
             default:
                 System.out.println("Unknown command");
@@ -42,8 +45,9 @@ public class Main {
         System.out.println(variables.get(variable) != null ? variables.get(variable) : "Unknown variable");
     }
 
-    public static void assignValueToVariable(String variable, Map<String, Integer> variables) {
-        String[] tokens = variable.split("\\s+=\\s+");
+    public static void assignValueToVariable(String assignment, Map<String, Integer> variables) {
+        assignment = assignment.replaceAll(" ", "");
+        String[] tokens = assignment.split("=");
 
         if (!tokens[0].matches("[a-zA-Z]+")) {
             System.out.println("Invalid identifier");
@@ -75,77 +79,57 @@ public class Main {
     }
 
     public static String validateAndSimplifyExpression(String expression) {
-        String result = "";
-        StringTokenizer tokens = new StringTokenizer(expression, "[+-/*]+");
-        String[] array = expression.split("(?<=[+-/*]+|?=[+-/*]+)");
-        return "test";
-    }
+        expression = expression.replace(" ", "");
 
-    public static int calculateResultOfPostfix(String postfix, Map<String, Integer> variables) {
-        final String OPERATORS = "[-*/+() ]";
-        int result = 0;
-        Stack<Integer> mathStack = new Stack<>();
-        StringTokenizer tokens = new StringTokenizer(postfix, " ", false);
-
-        while (tokens.hasMoreTokens()) {
-            String token = tokens.nextToken();
-
-//        If the incoming element is a number, push it into the stack (the whole number, not a single digit!).
-            if (token.matches("[-+]?[0-9]+")) {
-                mathStack.push(Integer.parseInt(token));
-                continue;
-            }
-
-//        If the incoming element is the name of a variable, push its value into the stack.
-            if (variables.get(token) != null) {
-                mathStack.push(variables.get(token));
-                continue;
-            }
-
-//        If the incoming element is an operator, then pop twice to get two numbers and perform the operation;
-//        push the result on the stack.
-            if (token.matches(OPERATORS)) {
-                int a = mathStack.pop();
-                int b = mathStack.pop();
-                int c = 0;
-                switch (token) {
-                    case "+":
-                        c = b + a;
-                        break;
-                    case "-":
-                        c = b - a;
-                        break;
-                    case "*":
-                        c = b * a;
-                        break;
-                    case "/":
-                        c = b / a;
-                    default:
-                }
-                mathStack.push(c);
-            }
+        // if multiple *** or /// then return null
+        if (expression.matches(".*[*/]{2,}.*")) {
+//            System.out.println("multiple *** or ///");
+            return null;
         }
 
-//        When the expression ends, the number on the top of the stack is a final result.
-        return mathStack.pop();
+        // add a zero if there is an initial + or -
+        if (expression.matches("^[-+].*")) {
+            expression = "0" + expression;
+        }
+
+        // replace every -- with +
+        expression = expression.replaceAll("--", "\\+");
+
+        // for every multiple +++ replace with +
+        expression = expression.replaceAll("\\+{2,}", "+");
+
+        // replace every +- with -
+        expression = expression.replaceAll("\\+-", "-");
+
+        // remove unary plus and add space before unary minus
+        expression = expression.replaceAll("\\*\\+", "*");
+        expression = expression.replaceAll("\\*-", "* -");
+        expression = expression.replaceAll("/\\+", "/");
+        expression = expression.replaceAll("/-", "/ -");
+        expression = expression.replaceAll("\\(\\+", "(");
+        expression = expression.replaceAll("\\(-", "( -");
+
+//        System.out.println(expression);
+        return expression;
     }
 
     private static String convertInfixToPostfix(String infix) {
-        final String OPERATORS = "[-*/+() ]";
+        final String OPERATORS_AND_SPACES = "[-*/+() ]";
         String postfix = "";
         String token = "";
-        StringTokenizer tokens = new StringTokenizer(infix, OPERATORS, true);
+        StringTokenizer tokens = new StringTokenizer(infix, OPERATORS_AND_SPACES, true);
         Stack<String> mathStack = new Stack<>();
 
         while (tokens.hasMoreTokens()) {
             token = tokens.nextToken();
 
-//            Ignore spaces
-            if (token.matches("\\s"))
-                continue;
+//            If the token is a space, then it is followed by a unary minus
+            if (token.matches(" ")) {
+                token = tokens.nextToken() + tokens.nextToken();
+            }
 
 //        Add operands (numbers and variables) to the result (postfix notation) as they arrive.
-            if (!token.matches(OPERATORS)) {
+            if (!token.matches(OPERATORS_AND_SPACES)) {
                 postfix += token + " ";
                 continue;
             }
@@ -208,8 +192,66 @@ public class Main {
 
         }
 
-        //temp, to be removed!!
-        System.out.println(postfix);
+//        System.out.println(postfix);
         return postfix;
+    }
+
+    public static int calculateResultOfPostfix(String postfix, Map<String, Integer> variables) {
+        final String OPERATORS = "[-*/+() ]";
+        boolean makeVariableNegative = false;
+        int variableValue = 0;
+        int result = 0;
+        Stack<Integer> mathStack = new Stack<>();
+        StringTokenizer tokens = new StringTokenizer(postfix, " ", false);
+
+        while (tokens.hasMoreTokens()) {
+            String token = tokens.nextToken();
+
+//        If the incoming element is a number, push it into the stack (the whole number, not a single digit!).
+            if (token.matches("[-+]?[0-9]+")) {
+                mathStack.push(Integer.parseInt(token));
+                continue;
+            }
+
+//        If the incoming element is a variable with a unary minus, then remember the minus in a temp variable
+            if (token.matches("-[a-zA-Z]+")) {
+                makeVariableNegative = true;
+                token = token.replaceAll("-", "");
+            }
+
+//         If you element is a variable, get its value and add the minus if needed
+            if (variables.get(token) != null) {
+                variableValue = makeVariableNegative ? -variables.get(token) : variables.get(token);
+                mathStack.push(variableValue);
+                makeVariableNegative = false;
+                continue;
+            }
+
+//        If the incoming element is an operator, then pop twice to get two numbers and perform the operation;
+//        push the result on the stack.
+            if (token.matches(OPERATORS)) {
+                int a = mathStack.pop();
+                int b = mathStack.pop();
+                int c = 0;
+                switch (token) {
+                    case "+":
+                        c = b + a;
+                        break;
+                    case "-":
+                        c = b - a;
+                        break;
+                    case "*":
+                        c = b * a;
+                        break;
+                    case "/":
+                        c = b / a;
+                    default:
+                }
+                mathStack.push(c);
+            }
+        }
+
+//        When the expression ends, the number on the top of the stack is a final result.
+        return mathStack.pop();
     }
 }
