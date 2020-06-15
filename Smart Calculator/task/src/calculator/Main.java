@@ -33,7 +33,7 @@ public class Main {
             case "/help":
                 System.out.println(
                         "The program can calculate expressions with multiple additions and subtractions.\n" +
-                        "It supports +-*/() operators, including multiple +++ and --- and unary minus operators.\n" +
+                        "It supports +-*/()^ operators, including multiple +++ and --- and unary minus operators.\n" +
                         "You can assign values to variables and then use them in your calculations.\n" +
                         "Type /exit to end the program.");
                 break;
@@ -83,8 +83,8 @@ public class Main {
         expression = expression.replaceAll("\\s+", "");
 //        System.out.println(expression);
 
-        // if multiple *** or /// then return null
-        if (expression.matches(".*[*/]{2,}.*")) {
+        // if multiple *** or /// or ^^^ then return null
+        if (expression.matches(".*[*/^]{2,}.*")) {
 //            System.out.println("multiple *** or ///");
             return null;
         }
@@ -110,17 +110,19 @@ public class Main {
         expression = expression.replaceAll("/-", "/ -");
         expression = expression.replaceAll("\\(\\+", "(");
         expression = expression.replaceAll("\\(-", "( -");
+        expression = expression.replaceAll("\\^\\+", "^");
+        expression = expression.replaceAll("\\^-", "^ -");
 
 //        System.out.println(expression);
         return expression;
     }
 
     private static String convertInfixToPostfix(String infix) {
-        final String OPERATORS_AND_SPACES = "[-*/+ ()]";
+        final String OPERATORS_AND_SPACES = "[-*/^+ ()]";
         String postfix = "";
         String token = "";
         StringTokenizer tokens = new StringTokenizer(infix, OPERATORS_AND_SPACES, true);
-        Deque<String> mathStack = new ArrayDeque<>();
+        Deque<String> operatorStack = new ArrayDeque<>();
 
         while (tokens.hasMoreTokens()) {
             token = tokens.nextToken();
@@ -137,60 +139,73 @@ public class Main {
             }
 
 //        If the stack is empty or contains a left parenthesis on top, push the incoming operator on the stack.
-            if (mathStack.isEmpty() || mathStack.peekFirst().matches("\\(")) {
-                mathStack.offerFirst(token);
+            if (operatorStack.isEmpty() || operatorStack.peekFirst().matches("\\(")) {
+                operatorStack.offerFirst(token);
                 continue;
             }
 
 //        If the incoming operator has higher precedence than the top of the stack, push it on the stack.
-            if (token.matches("[*/]") && mathStack.peekFirst().matches("[-+]")) {
-                mathStack.offerFirst(token);
+            if (token.matches("\\^") && !operatorStack.peekFirst().matches("\\^")) {
+                operatorStack.offerFirst(token);
+                continue;
+            }
+
+            if (token.matches("[*/]") && operatorStack.peekFirst().matches("[-+]")) {
+                operatorStack.offerFirst(token);
                 continue;
             }
 
 //        If the incoming operator has lower or equal precedence than the top of the operator stack,
 //        pop the stack and add operators to the result until you see an operator that has a smaller precedence
 //        or a left parenthesis on the top of the stack; then add the incoming operator to the stack.
-            if (token.matches("[-+]")) {
-                while (!mathStack.isEmpty() && !mathStack.peekFirst().matches("\\(")) {
-                    postfix += mathStack.pollFirst() + " ";
+            if (token.matches("[-+]") && operatorStack.peekFirst().matches("[-*/^+]")) {
+                while (!operatorStack.isEmpty() && !operatorStack.peekFirst().matches("\\(")) {
+                    postfix += operatorStack.pollFirst() + " ";
                 }
-                mathStack.offerFirst(token);
+                operatorStack.offerFirst(token);
                 continue;
             }
 
-            if (token.matches("[*/]") && mathStack.peekFirst().matches("[-+]")) {
-                while (!mathStack.isEmpty() && !mathStack.peekFirst().matches("[-+(]")) {
-                    postfix += mathStack.pollFirst() + " ";
+            if (token.matches("[*/]") && operatorStack.peekFirst().matches("[*/^]")) {
+                while (!operatorStack.isEmpty() && !operatorStack.peekFirst().matches("[-+(]")) {
+                    postfix += operatorStack.pollFirst() + " ";
                 }
-                mathStack.offerFirst(token);
+                operatorStack.offerFirst(token);
+                continue;
+            }
+
+            if (token.matches("\\^") && operatorStack.peekFirst().matches("\\^")) {
+                while (!operatorStack.isEmpty() && !operatorStack.peekFirst().matches("[-+(*/]")) {
+                    postfix += operatorStack.pollFirst() + " ";
+                }
+                operatorStack.offerFirst(token);
                 continue;
             }
 
 //        If the incoming element is a left parenthesis, push it on the stack.
             if (token.matches("\\(")) {
-                mathStack.offerFirst(token);
+                operatorStack.offerFirst(token);
                 continue;
             }
 
 //        If the incoming element is a right parenthesis, pop the stack and add operators to the result
 //        until you see a left parenthesis. Discard the pair of parentheses.
             if (token.matches("\\)")) {
-                while (!mathStack.isEmpty() && !mathStack.peekFirst().matches("\\(")) {
-                    postfix += mathStack.pollFirst() + " ";
+                while (!operatorStack.isEmpty() && !operatorStack.peekFirst().matches("\\(")) {
+                    postfix += operatorStack.pollFirst() + " ";
                 }
-                mathStack.removeFirst();
+                operatorStack.removeFirst();
                 continue;
             }
         }
 
 //      At the end of the expression, pop the stack and add all operators to the result.
 //      No parentheses should remain on the stack. Otherwise, the expression has unbalanced brackets. It is a syntax error.
-        while (!mathStack.isEmpty()) {
-            if (mathStack.peekFirst().matches("[()]")) {
+        while (!operatorStack.isEmpty()) {
+            if (operatorStack.peekFirst().matches("[()]")) {
                 return null; //unbalanced parenthesis = invalid expression
             }
-            postfix += mathStack.pollFirst() + " ";
+            postfix += operatorStack.pollFirst() + " ";
 
         }
 
@@ -199,11 +214,11 @@ public class Main {
     }
 
     public static BigInteger calculateResultOfPostfix(String postfix, Map<String, BigInteger> variables) {
-        final String OPERATORS = "[-*/+() ]";
+        final String OPERATORS = "[-*/+()^ ]";
         boolean makeVariableNegative = false;
         BigInteger variableValue = BigInteger.ZERO;
         BigInteger result = BigInteger.ZERO;
-        Deque<BigInteger> mathStack = new ArrayDeque<>();
+        Deque<BigInteger> numberStack = new ArrayDeque<>();
         StringTokenizer tokens = new StringTokenizer(postfix, " ", false);
 
         while (tokens.hasMoreTokens()) {
@@ -211,7 +226,7 @@ public class Main {
 
 //        If the incoming element is a number, push it into the stack (the whole number, not a single digit!).
             if (token.matches("[-+]?[0-9]+")) {
-                mathStack.offerFirst(new BigInteger(token));
+                numberStack.offerFirst(new BigInteger(token));
                 continue;
             }
 
@@ -224,7 +239,7 @@ public class Main {
 //         If you element is a variable, get its value and add the minus if needed
             if (variables.get(token) != null) {
                 variableValue = makeVariableNegative ? variables.get(token).negate() : variables.get(token);
-                mathStack.offerFirst(variableValue);
+                numberStack.offerFirst(variableValue);
                 makeVariableNegative = false;
                 continue;
             }
@@ -232,8 +247,8 @@ public class Main {
 //        If the incoming element is an operator, then pop twice to get two numbers and perform the operation;
 //        push the result on the stack.
             if (token.matches(OPERATORS)) {
-                BigInteger a = mathStack.pop();
-                BigInteger b = mathStack.pop();
+                BigInteger a = numberStack.pollFirst();
+                BigInteger b = numberStack.pollFirst();
                 BigInteger c = BigInteger.ZERO;
                 switch (token) {
                     case "+":
@@ -247,13 +262,16 @@ public class Main {
                         break;
                     case "/":
                         c = b.divide(a);
+                        break;
+                    case "^":
+                        c = b.pow(a.intValue());
                     default:
                 }
-                mathStack.offerFirst(c);
+                numberStack.offerFirst(c);
             }
         }
 
 //        When the expression ends, the number on the top of the stack is a final result.
-        return mathStack.pollFirst();
+        return numberStack.pollFirst();
     }
 }
