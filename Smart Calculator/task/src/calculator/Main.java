@@ -120,7 +120,7 @@ public class Main {
         String postfix = "";
         String token = "";
         StringTokenizer tokens = new StringTokenizer(infix, OPERATORS_AND_SPACES, true);
-        Stack<String> mathStack = new Stack<>();
+        Deque<String> mathStack = new ArrayDeque<>();
 
         while (tokens.hasMoreTokens()) {
             token = tokens.nextToken();
@@ -137,14 +137,14 @@ public class Main {
             }
 
 //        If the stack is empty or contains a left parenthesis on top, push the incoming operator on the stack.
-            if (mathStack.isEmpty() || mathStack.peek().matches("\\(")) {
-                mathStack.push(token);
+            if (mathStack.isEmpty() || mathStack.peekFirst().matches("\\(")) {
+                mathStack.offerFirst(token);
                 continue;
             }
 
 //        If the incoming operator has higher precedence than the top of the stack, push it on the stack.
-            if (token.matches("[*/]") && mathStack.peek().matches("[-+]")) {
-                mathStack.push(token);
+            if (token.matches("[*/]") && mathStack.peekFirst().matches("[-+]")) {
+                mathStack.offerFirst(token);
                 continue;
             }
 
@@ -152,34 +152,34 @@ public class Main {
 //        pop the stack and add operators to the result until you see an operator that has a smaller precedence
 //        or a left parenthesis on the top of the stack; then add the incoming operator to the stack.
             if (token.matches("[-+]")) {
-                while (!mathStack.isEmpty() && !mathStack.peek().matches("\\(")) {
-                    postfix += mathStack.pop() + " ";
+                while (!mathStack.isEmpty() && !mathStack.peekFirst().matches("\\(")) {
+                    postfix += mathStack.pollFirst() + " ";
                 }
-                mathStack.push(token);
+                mathStack.offerFirst(token);
                 continue;
             }
 
-            if (token.matches("[*/]") && mathStack.peek().matches("[-+]")) {
-                while (!mathStack.isEmpty() && !mathStack.peek().matches("[-+(]")) {
-                    postfix += mathStack.pop() + " ";
+            if (token.matches("[*/]") && mathStack.peekFirst().matches("[-+]")) {
+                while (!mathStack.isEmpty() && !mathStack.peekFirst().matches("[-+(]")) {
+                    postfix += mathStack.pollFirst() + " ";
                 }
-                mathStack.push(token);
+                mathStack.offerFirst(token);
                 continue;
             }
 
 //        If the incoming element is a left parenthesis, push it on the stack.
             if (token.matches("\\(")) {
-                mathStack.push(token);
+                mathStack.offerFirst(token);
                 continue;
             }
 
 //        If the incoming element is a right parenthesis, pop the stack and add operators to the result
 //        until you see a left parenthesis. Discard the pair of parentheses.
             if (token.matches("\\)")) {
-                while (!mathStack.isEmpty() && !mathStack.peek().matches("\\(")) {
-                    postfix += mathStack.pop() + " ";
+                while (!mathStack.isEmpty() && !mathStack.peekFirst().matches("\\(")) {
+                    postfix += mathStack.pollFirst() + " ";
                 }
-                mathStack.pop();
+                mathStack.removeFirst();
                 continue;
             }
         }
@@ -187,10 +187,10 @@ public class Main {
 //      At the end of the expression, pop the stack and add all operators to the result.
 //      No parentheses should remain on the stack. Otherwise, the expression has unbalanced brackets. It is a syntax error.
         while (!mathStack.isEmpty()) {
-            if (mathStack.peek().matches("[()]")) {
+            if (mathStack.peekFirst().matches("[()]")) {
                 return null; //unbalanced parenthesis = invalid expression
             }
-            postfix += mathStack.pop() + " ";
+            postfix += mathStack.pollFirst() + " ";
 
         }
 
@@ -203,7 +203,7 @@ public class Main {
         boolean makeVariableNegative = false;
         BigInteger variableValue = BigInteger.ZERO;
         BigInteger result = BigInteger.ZERO;
-        Stack<BigInteger> mathStack = new Stack<>();
+        Deque<BigInteger> mathStack = new ArrayDeque<>();
         StringTokenizer tokens = new StringTokenizer(postfix, " ", false);
 
         while (tokens.hasMoreTokens()) {
@@ -211,7 +211,7 @@ public class Main {
 
 //        If the incoming element is a number, push it into the stack (the whole number, not a single digit!).
             if (token.matches("[-+]?[0-9]+")) {
-                mathStack.push(new BigInteger(token));
+                mathStack.offerFirst(new BigInteger(token));
                 continue;
             }
 
@@ -224,7 +224,7 @@ public class Main {
 //         If you element is a variable, get its value and add the minus if needed
             if (variables.get(token) != null) {
                 variableValue = makeVariableNegative ? variables.get(token).negate() : variables.get(token);
-                mathStack.push(variableValue);
+                mathStack.offerFirst(variableValue);
                 makeVariableNegative = false;
                 continue;
             }
@@ -249,11 +249,11 @@ public class Main {
                         c = b.divide(a);
                     default:
                 }
-                mathStack.push(c);
+                mathStack.offerFirst(c);
             }
         }
 
 //        When the expression ends, the number on the top of the stack is a final result.
-        return mathStack.pop();
+        return mathStack.pollFirst();
     }
 }
