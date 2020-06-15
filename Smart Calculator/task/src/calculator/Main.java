@@ -1,11 +1,12 @@
 package calculator;
 
+import java.math.BigInteger;
 import java.util.*;
 
 public class Main {
 
     public static void main(String[] args) {
-        Map<String, Integer> variables = new HashMap<>();
+        Map<String, BigInteger> variables = new HashMap<>();
         Scanner scanner = new Scanner(System.in);
         String input = "";
 
@@ -41,11 +42,11 @@ public class Main {
         }
     }
 
-    public static void printValueOfVariable(String variable, Map<String, Integer> variables) {
+    public static void printValueOfVariable(String variable, Map<String, BigInteger> variables) {
         System.out.println(variables.get(variable) != null ? variables.get(variable) : "Unknown variable");
     }
 
-    public static void assignValueToVariable(String assignment, Map<String, Integer> variables) {
+    public static void assignValueToVariable(String assignment, Map<String, BigInteger> variables) {
         assignment = assignment.replaceAll(" ", "");
         String[] tokens = assignment.split("=");
 
@@ -60,18 +61,18 @@ public class Main {
         }
 
         if (tokens[1].matches("[-+]?[0-9]+")) {
-            variables.put(tokens[0], Integer.parseInt(tokens[1]));
+            variables.put(tokens[0], new BigInteger(tokens[1]));
             return;
         }
 
         System.out.println("Invalid assignment");
     }
 
-    public static void printResultOfExpression(String expression, Map<String, Integer> variables) {
+    public static void printResultOfExpression(String expression, Map<String, BigInteger> variables) {
         try {
             expression = validateAndSimplifyExpression(expression);
             String postfix = convertInfixToPostfix(expression);
-            int result = calculateResultOfPostfix(postfix, variables);
+            BigInteger result = calculateResultOfPostfix(postfix, variables);
             System.out.println(result);
         } catch (Exception e) {
             System.out.println("Invalid expression");
@@ -79,7 +80,8 @@ public class Main {
     }
 
     public static String validateAndSimplifyExpression(String expression) {
-        expression = expression.replace(" ", "");
+        expression = expression.replaceAll("\\s+", "");
+//        System.out.println(expression);
 
         // if multiple *** or /// then return null
         if (expression.matches(".*[*/]{2,}.*")) {
@@ -114,7 +116,7 @@ public class Main {
     }
 
     private static String convertInfixToPostfix(String infix) {
-        final String OPERATORS_AND_SPACES = "[-*/+() ]";
+        final String OPERATORS_AND_SPACES = "[-*/+ ()]";
         String postfix = "";
         String token = "";
         StringTokenizer tokens = new StringTokenizer(infix, OPERATORS_AND_SPACES, true);
@@ -196,12 +198,12 @@ public class Main {
         return postfix;
     }
 
-    public static int calculateResultOfPostfix(String postfix, Map<String, Integer> variables) {
+    public static BigInteger calculateResultOfPostfix(String postfix, Map<String, BigInteger> variables) {
         final String OPERATORS = "[-*/+() ]";
         boolean makeVariableNegative = false;
-        int variableValue = 0;
-        int result = 0;
-        Stack<Integer> mathStack = new Stack<>();
+        BigInteger variableValue = BigInteger.ZERO;
+        BigInteger result = BigInteger.ZERO;
+        Stack<BigInteger> mathStack = new Stack<>();
         StringTokenizer tokens = new StringTokenizer(postfix, " ", false);
 
         while (tokens.hasMoreTokens()) {
@@ -209,7 +211,7 @@ public class Main {
 
 //        If the incoming element is a number, push it into the stack (the whole number, not a single digit!).
             if (token.matches("[-+]?[0-9]+")) {
-                mathStack.push(Integer.parseInt(token));
+                mathStack.push(new BigInteger(token));
                 continue;
             }
 
@@ -221,7 +223,7 @@ public class Main {
 
 //         If you element is a variable, get its value and add the minus if needed
             if (variables.get(token) != null) {
-                variableValue = makeVariableNegative ? -variables.get(token) : variables.get(token);
+                variableValue = makeVariableNegative ? variables.get(token).negate() : variables.get(token);
                 mathStack.push(variableValue);
                 makeVariableNegative = false;
                 continue;
@@ -230,21 +232,21 @@ public class Main {
 //        If the incoming element is an operator, then pop twice to get two numbers and perform the operation;
 //        push the result on the stack.
             if (token.matches(OPERATORS)) {
-                int a = mathStack.pop();
-                int b = mathStack.pop();
-                int c = 0;
+                BigInteger a = mathStack.pop();
+                BigInteger b = mathStack.pop();
+                BigInteger c = BigInteger.ZERO;
                 switch (token) {
                     case "+":
-                        c = b + a;
+                        c = b.add(a);
                         break;
                     case "-":
-                        c = b - a;
+                        c = b.subtract(a);
                         break;
                     case "*":
-                        c = b * a;
+                        c = b.multiply(a);
                         break;
                     case "/":
-                        c = b / a;
+                        c = b.divide(a);
                     default:
                 }
                 mathStack.push(c);
